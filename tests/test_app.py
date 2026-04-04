@@ -1,97 +1,98 @@
-"""
-Unit tests for the ACEest Fitness & Gym Flask API.
-Tests endpoints for programs, client profiles, and Swagger documentation.
-"""
 import sys
 import os
+import unittest
+import json
 
+# Force environment variable to use a safe test database before importing app
+os.environ["FLASK_DB_NAME"] = "test_aceest_fitness.db"
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from app import app
 
-def test_home():
-    """Test home endpoint returns 200 and expected message."""
-    client = app.test_client()
-    res = client.get("/")
-    assert res.status_code == 200
-    assert b"ACEest Fitness & Gym APP Running" in res.data
+from app import app, init_db
 
+class AceestApiTestCase(unittest.TestCase):
+    def setUp(self):
+        # Create the specific test schema on setup
+        init_db()
+        self.app = app.test_client()
+        self.app.testing = True
 
-def test_get_programs():
-    """Test retrieving all programs endpoint."""
-    client = app.test_client()
-    res = client.get("/programs")
-    assert res.status_code == 200
-    data = res.get_json()
-    assert "Fat Loss (FL)" in data
-    assert "Muscle Gain (MG)" in data
-    assert "Beginner (BG)" in data
+    def tearDown(self):
+        # Delete the test database file to leave no trace
+        if os.path.exists("test_aceest_fitness.db"):
+            try:
+                os.remove("test_aceest_fitness.db")
+            except Exception:
+                pass # Avoid lock crashes on specific OS handling
 
+    def test_home(self):
+        response = self.app.get('/')
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(data['message'], "ACEest Fitness & Gym API Running")
 
-def test_valid_program():
-    """Test retrieving a valid program."""
-    client = app.test_client()
-    res = client.get("/program/Fat Loss (FL)")
-    assert res.status_code == 200
-    data = res.get_json()
-    assert "workout" in data
-    assert "diet" in data
-    assert "color" in data
+    def test_get_programs(self):
+        response = self.app.get('/programs')
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertIn("Fat Loss (FL)", data)
+        self.assertIn("Muscle Gain (MG)", data)
 
+    def test_save_and_load_client(self):
+        client_data = {
+            "name": "Jane Doe",
+            "age": 28,
+            "weight": 65.0,
+            "program": "Beginner (BG)"
+        }
+        # Test Save Client
+        response = self.app.post('/client',
+                                 data=json.dumps(client_data),
+                                 content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        
+        # Test Load Client
+        response = self.app.get('/client/Jane Doe')
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(data['name'], "Jane Doe")
+        self.assertEqual(data['weight'], 65.0)
 
-def test_invalid_program():
-    """Test retrieving an invalid program returns 404."""
-    client = app.test_client()
-    res = client.get("/program/invalid")
-    assert res.status_code == 404
-    data = res.get_json()
-    assert data["error"] == "Program not found"
+    def test_save_and_get_progress(self):
+        # Populate dummy client first
+        client_data = {"name": "Jane Doe", "program": "Beginner (BG)", "weight": 60}
+        self.app.post('/client', data=json.dumps(client_data), content_type='application/json')
 
+        # Test Save Progress
+        progress_data = {
+            "name": "Jane Doe",
+            "adherence": 90
+        }
+        response = self.app.post('/progress',
+                                 data=json.dumps(progress_data),
+                                 content_type='application/json')
+        self.assertEqual(response.status_code, 200)
 
-def test_client_profile_valid():
-    """Test creating a valid client profile."""
-    client = app.test_client()
-    payload = {
-        "name": "John Doe",
-        "age": 28,
-        "weight": 70,
-        "program": "Fat Loss (FL)",
-        "adherence": 85
-    }
-    res = client.post("/client", json=payload)
-    assert res.status_code == 200
-    data = res.get_json()
-    assert data["name"] == "John Doe"
-    assert data["program"] == "Fat Loss (FL)"
-    assert data["calories"] == 70 * 22
-    assert data["adherence"] == 85
+        # Test Get Progress
+        response = self.app.get('/progress/Jane Doe')
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]['adherence'], 90)
 
+    def test_client_not_found(self):
+        response = self.app.get('/client/GhostUser')
+        self.assertEqual(response.status_code, 404)
 
-def test_client_profile_invalid_program():
-    """Test creating a client profile with invalid program."""
-    client = app.test_client()
-    payload = {
-        "name": "Jane Doe",
-        "age": 25,
-        "weight": 60,
-        "program": "Invalid Program",
-        "adherence": 90
-    }
-    res = client.post("/client", json=payload)
-    assert res.status_code == 400
-    data = res.get_json()
-    assert data["error"] == "Invalid program"
+    def test_save_client_invalid_program(self):
+        client_data = {
+            "name": "Invalid Test",
+            "program": "Bodybuilder (XX)"
+        }
+        response = self.app.post('/client',
+                                 data=json.dumps(client_data),
+                                 content_type='application/json')
+        self.assertEqual(response.status_code, 400)
 
-
-def test_swagger_ui_available():
-    """Test Swagger API documentation is available."""
-    client = app.test_client()
-    res = client.get("/swagger.json")
-    assert res.status_code == 200
-
-    data = res.get_json()
-    assert data["info"]["title"] == "ACEest Fitness & Gym"
-    assert (
-        data["info"]["description"]
-        == "API for accessing fitness programs, workouts, and nutrition plans."
-    )
+if __name__ == '__main__':
+    unittest.main()
