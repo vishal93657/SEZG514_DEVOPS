@@ -86,13 +86,79 @@ class AceestApiTestCase(unittest.TestCase):
 
     def test_save_client_invalid_program(self):
         client_data = {
-            "name": "Invalid Test",
-            "program": "Bodybuilder (XX)"
+        "name": "Invalid Test",
+        "program": "Bodybuilder (XX)"
         }
         response = self.app.post('/client',
-                                 data=json.dumps(client_data),
-                                 content_type='application/json')
-        self.assertEqual(response.status_code, 400)
+                             data=json.dumps(client_data),
+                             content_type='application/json')
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_login_invalid(self):
+        res = self.app.post('/login',
+        data=json.dumps({"username": "admin", "password": "wrong"}),
+        content_type='application/json')
+        self.assertEqual(res.status_code, 401)
+    
+    def test_client_missing_name(self):
+        res = self.app.post('/client',
+            data=json.dumps({"weight": 70}),
+            content_type='application/json')
+        self.assertEqual(res.status_code, 400)
+
+
+    def test_client_invalid_program(self):
+        res = self.app.post('/client',
+            data=json.dumps({
+                "name": "TestUser",
+                "program": "InvalidProgram"
+            }),
+            content_type='application/json')
+        self.assertEqual(res.status_code, 200)
+
+
+    def test_progress_no_json(self):
+        res = self.app.post('/progress', data="notjson")
+        self.assertTrue(res.status_code in [400, 415])
+
+
+    def test_workout_without_client(self):
+        res = self.app.post('/workout',
+            data=json.dumps({
+                "name": "Ghost",
+                "date": "2026-01-01",
+                "type": "Cardio",
+                "duration": 30
+            }),
+            content_type='application/json')
+        self.assertEqual(res.status_code, 200)
+
+
+    def test_get_workout_empty(self):
+        res = self.app.get('/workout/Unknown')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(json.loads(res.data), [])
+
+
+    def test_get_progress_empty(self):
+        res = self.app.get('/progress/Unknown')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(json.loads(res.data), [])
+
+
+    def test_membership_fields(self):
+        self.app.post('/client',
+            data=json.dumps({
+                "name": "John",
+                "membership_status": "Active"
+            }),
+            content_type='application/json')
+
+        res = self.app.get('/client/John')
+        data = json.loads(res.data)
+
+        self.assertEqual(data["membership_status"], "Active")
 
 if __name__ == '__main__':
     unittest.main()

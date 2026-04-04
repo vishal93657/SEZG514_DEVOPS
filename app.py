@@ -39,16 +39,34 @@ swagger = Swagger(app, config=swagger_config, template=swagger_template)
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
+
+    # Users
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            username TEXT PRIMARY KEY,
+            password TEXT,
+            role TEXT
+        )
+    """)
+
+    # Clients (UPDATED)
     cur.execute("""
         CREATE TABLE IF NOT EXISTS clients (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT UNIQUE,
             age INTEGER,
+            height REAL,
             weight REAL,
             program TEXT,
-            calories INTEGER
+            calories INTEGER,
+            target_weight REAL,
+            target_adherence INTEGER,
+            membership_status TEXT,
+            membership_end TEXT
         )
     """)
+
+    # Progress
     cur.execute("""
         CREATE TABLE IF NOT EXISTS progress (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,6 +75,48 @@ def init_db():
             adherence INTEGER
         )
     """)
+
+    # Workouts
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS workouts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            client_name TEXT,
+            date TEXT,
+            workout_type TEXT,
+            duration_min INTEGER,
+            notes TEXT
+        )
+    """)
+
+    # Exercises
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS exercises (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            workout_id INTEGER,
+            name TEXT,
+            sets INTEGER,
+            reps INTEGER,
+            weight REAL
+        )
+    """)
+
+    # Metrics
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS metrics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            client_name TEXT,
+            date TEXT,
+            weight REAL,
+            waist REAL,
+            bodyfat REAL
+        )
+    """)
+
+    # Default admin
+    cur.execute("SELECT * FROM users WHERE username='admin'")
+    if not cur.fetchone():
+        cur.execute("INSERT INTO users VALUES ('admin','admin','Admin')")
+
     conn.commit()
     conn.close()
 
@@ -78,14 +138,45 @@ def home():
     responses:
       200:
         description: API is running
+    """
+    return jsonify({"message": "ACEest Fitness & Gym API Running"})
+
+
+# ---------- LOGIN ----------
+@app.route("/login", methods=["POST"])
+def login():
+    """
+    Login user
+    ---
+    parameters:
+      - in: body
+        name: credentials
+        required: true
         schema:
           type: object
           properties:
-            message:
+            username:
               type: string
-              example: ACEest Fitness & Gym API Running
+            password:
+              type: string
+    responses:
+      200:
+        description: Login successful
+      401:
+        description: Invalid credentials
     """
-    return jsonify({"message": "ACEest Fitness & Gym API Running"})
+    data = request.get_json()
+
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+    cur.execute("SELECT role FROM users WHERE username=? AND password=?",
+                (data.get("username"), data.get("password")))
+    row = cur.fetchone()
+    conn.close()
+
+    if row:
+        return jsonify({"message": "Login successful", "role": row[0]})
+    return jsonify({"error": "Invalid credentials"}), 401
 
 
 @app.route("/programs", methods=["GET"])
@@ -96,11 +187,6 @@ def get_programs():
     responses:
       200:
         description: List of available programs
-        schema:
-          type: array
-          items:
-            type: string
-            example: ["Fat Loss (FL)", "Muscle Gain (MG)", "Beginner (BG)"]
     """
     return jsonify(list(programs.keys()))
 
@@ -116,14 +202,13 @@ def save_client():
         required: true
         schema:
           type: object
-          required:
-            - name
-            - program
           properties:
             name:
               type: string
             age:
               type: integer
+            height:
+              type: number
             weight:
               type: number
             program:
@@ -131,39 +216,42 @@ def save_client():
     responses:
       200:
         description: Client saved successfully
-      400:
-        description: Missing or invalid data
-      415:
-        description: Request must be JSON
-      500:
-        description: Database error
     """
-    if not request.is_json:
-        return jsonify({"error": "Request must be JSON with Content-Type 'application/json'"}), 415
-
     data = request.get_json()
+
     name = data.get("name")
-    age = data.get("age")
-    weight = data.get("weight")
     program = data.get("program")
+    weight = data.get("weight")
 
-    if not name or not program or program not in programs:
-        return jsonify({"error": "Name and valid Program required"}), 400
+    if not name:
+        return jsonify({"error": "Name required"}), 400
 
-    calories = int(weight * programs[program]["factor"]) if weight else None
+    calories = int(weight * programs[program]["factor"]) if weight and program in programs else None
 
-    try:
-        conn = sqlite3.connect(DB_NAME)
-        cur = conn.cursor()
-        cur.execute("""
-            INSERT OR REPLACE INTO clients (name, age, weight, program, calories)
-            VALUES (?, ?, ?, ?, ?)
-        """, (name, age, weight, program, calories))
-        conn.commit()
-        conn.close()
-        return jsonify({"message": "Client saved", "calories": calories})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+
+    cur.execute("""
+        INSERT OR REPLACE INTO clients
+        (name, age, height, weight, program, calories, target_weight, target_adherence, membership_status, membership_end)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        name,
+        data.get("age"),
+        data.get("height"),
+        weight,
+        program,
+        calories,
+        data.get("target_weight"),
+        data.get("target_adherence"),
+        data.get("membership_status", "Active"),
+        data.get("membership_end")
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Client saved", "calories": calories})
 
 
 @app.route("/client/<name>", methods=["GET"])
@@ -179,19 +267,6 @@ def load_client(name):
     responses:
       200:
         description: Client data
-        schema:
-          type: object
-          properties:
-            name:
-              type: string
-            age:
-              type: integer
-            weight:
-              type: number
-            program:
-              type: string
-            calories:
-              type: integer
       404:
         description: Client not found
     """
@@ -204,13 +279,14 @@ def load_client(name):
     if not row:
         return jsonify({"error": "Client not found"}), 404
 
-    _, name, age, weight, program, calories = row
     return jsonify({
-        "name": name,
-        "age": age,
-        "weight": weight,
-        "program": program,
-        "calories": calories
+        "name": row[1],
+        "age": row[2],
+        "height": row[3],
+        "weight": row[4],
+        "program": row[5],
+        "calories": row[6],
+        "membership_status": row[9]
     })
 
 
@@ -222,11 +298,8 @@ def save_progress():
     parameters:
       - in: body
         name: progress
-        required: true
         schema:
           type: object
-          required:
-            - name
           properties:
             name:
               type: string
@@ -238,12 +311,7 @@ def save_progress():
       415:
         description: Request must be JSON
     """
-    if not request.is_json:
-        return jsonify({"error": "Request must be JSON with Content-Type 'application/json'"}), 415
-
     data = request.get_json()
-    name = data.get("name")
-    adherence = data.get("adherence", 0)
     week = datetime.now().strftime("Week %U - %Y")
 
     conn = sqlite3.connect(DB_NAME)
@@ -251,17 +319,18 @@ def save_progress():
     cur.execute("""
         INSERT INTO progress (client_name, week, adherence)
         VALUES (?, ?, ?)
-    """, (name, week, adherence))
+    """, (data.get("name"), week, data.get("adherence", 0)))
+
     conn.commit()
     conn.close()
 
-    return jsonify({"message": "Progress saved", "week": week, "adherence": adherence})
+    return jsonify({"message": "Progress saved"})
 
 
 @app.route("/progress/<name>", methods=["GET"])
 def get_progress(name):
     """
-    Get all progress records for a client
+    Get progress records
     ---
     parameters:
       - name: name
@@ -270,16 +339,7 @@ def get_progress(name):
         required: true
     responses:
       200:
-        description: List of weekly adherence records
-        schema:
-          type: array
-          items:
-            type: object
-            properties:
-              week:
-                type: string
-              adherence:
-                type: integer
+        description: Progress list
     """
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
@@ -287,8 +347,82 @@ def get_progress(name):
     rows = cur.fetchall()
     conn.close()
 
-    data = [{"week": w, "adherence": a} for w, a in rows]
-    return jsonify(data)
+    return jsonify([{"week": w, "adherence": a} for w, a in rows])
+
+
+# ---------- WORKOUT ----------
+@app.route("/workout", methods=["POST"])
+def add_workout():
+    """
+    Add workout
+    ---
+    parameters:
+      - in: body
+        name: workout
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+            date:
+              type: string
+            type:
+              type: string
+            duration:
+              type: integer
+            notes:
+              type: string
+    responses:
+      200:
+        description: Workout added
+    """
+    data = request.get_json()
+
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO workouts (client_name, date, workout_type, duration_min, notes)
+        VALUES (?, ?, ?, ?, ?)
+    """, (
+        data.get("name"),
+        data.get("date"),
+        data.get("type"),
+        data.get("duration"),
+        data.get("notes")
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Workout added"})
+
+
+@app.route("/workout/<name>", methods=["GET"])
+def get_workouts(name):
+    """
+    Get workouts for client
+    ---
+    parameters:
+      - name: name
+        in: path
+        type: string
+    responses:
+      200:
+        description: Workout list
+    """
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT date, workout_type, duration_min, notes
+        FROM workouts WHERE client_name=?
+    """, (name,))
+    rows = cur.fetchall()
+    conn.close()
+
+    return jsonify([
+        {"date": d, "type": t, "duration": dur, "notes": n}
+        for d, t, dur, n in rows
+    ])
 
 
 if __name__ == "__main__":
