@@ -23,7 +23,7 @@ programs = {
 
 @app.route("/")
 def home():
-    return jsonify({"message": "ACEest Fitness API Running"})
+    return jsonify({"message": "ACEest Fitness APP Running"})
 
 @app.route("/programs")
 def get_programs():
