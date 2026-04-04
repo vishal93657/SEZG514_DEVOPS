@@ -21,7 +21,7 @@ jobs:
       run: pip install -r requirements.txt
 
     - name: Lint check
-      run: pylint app.py tests/test_app.py -disable=all --enable=E
+      run: pylint app.py tests/test_app.py --disable=all --enable=E
 
     - name: Run Tests
       run: pytest

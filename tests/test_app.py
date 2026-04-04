@@ -1,11 +1,16 @@
-from app import app
+"""
+Unit tests for the ACEest Fitness & Gym Flask API.
+Tests endpoints for programs, client profiles, and Swagger documentation.
+"""
 import sys
 import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from app import app
 
 def test_home():
+    """Test home endpoint returns 200 and expected message."""
     client = app.test_client()
     res = client.get("/")
     assert res.status_code == 200
@@ -13,6 +18,7 @@ def test_home():
 
 
 def test_get_programs():
+    """Test retrieving all programs endpoint."""
     client = app.test_client()
     res = client.get("/programs")
     assert res.status_code == 200
@@ -23,6 +29,7 @@ def test_get_programs():
 
 
 def test_valid_program():
+    """Test retrieving a valid program."""
     client = app.test_client()
     res = client.get("/program/Fat Loss (FL)")
     assert res.status_code == 200
@@ -33,6 +40,7 @@ def test_valid_program():
 
 
 def test_invalid_program():
+    """Test retrieving an invalid program returns 404."""
     client = app.test_client()
     res = client.get("/program/invalid")
     assert res.status_code == 404
@@ -41,6 +49,7 @@ def test_invalid_program():
 
 
 def test_client_profile_valid():
+    """Test creating a valid client profile."""
     client = app.test_client()
     payload = {
         "name": "John Doe",
@@ -59,6 +68,7 @@ def test_client_profile_valid():
 
 
 def test_client_profile_invalid_program():
+    """Test creating a client profile with invalid program."""
     client = app.test_client()
     payload = {
         "name": "Jane Doe",
@@ -74,9 +84,14 @@ def test_client_profile_invalid_program():
 
 
 def test_swagger_ui_available():
+    """Test Swagger API documentation is available."""
     client = app.test_client()
     res = client.get("/swagger.json")
     assert res.status_code == 200
+
     data = res.get_json()
     assert data["info"]["title"] == "ACEest Fitness & Gym"
-    assert data["info"]["description"] == "API for accessing fitness programs, workouts, and nutrition plans."
+    assert (
+        data["info"]["description"]
+        == "API for accessing fitness programs, workouts, and nutrition plans."
+    )
