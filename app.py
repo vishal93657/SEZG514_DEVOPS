@@ -1,3 +1,4 @@
+__version__ = "1.0.0"
 """
 Flask API for ACEest Fitness & Gym.
 Converted from Tkinter desktop app to REST API with Swagger UI.
@@ -31,7 +32,7 @@ swagger_template = {
     "info": {
         "title": "ACEest Fitness & Gym",
         "description": "API for accessing fitness programs, workouts, and nutrition plans.",
-        "version": "1.0.0"}}
+        "version": __version__}}
 
 swagger = Swagger(app, config=swagger_config, template=swagger_template)
 
