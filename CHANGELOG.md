@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.1.3 (2026-04-30)
+
+### Bug Fixes
+
+- Security bug
+  ([`dfa67f5`](https://github.com/vishal93657/SEZG514_DEVOPS/commit/dfa67f5f9640e19728fe626f54e1ec62e57e8fd0))
+
+
 ## v1.1.2 (2026-04-30)
 
 ### Bug Fixes
