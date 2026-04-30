@@ -31,7 +31,7 @@ jobs:
       run: pytest
     
     - name: SonarCloud Scan
-      uses: sonarsource/sonarcloud-github-action@v2.0
+      uses: sonarsource/sonarcloud-github-action@v5
       with:
         sonar-project-key: vishal93657_SEZG514_DEVOPS
         sonar-organization: vishal93657
