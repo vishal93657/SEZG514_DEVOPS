@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.1.2 (2026-04-30)
+
+### Bug Fixes
+
+- Jenkins
+  ([`f2422f2`](https://github.com/vishal93657/SEZG514_DEVOPS/commit/f2422f28e7c02e3b9762a8778def3820d3fb127d))
+
+
 ## v1.1.1 (2026-04-30)
 
 ### Bug Fixes
