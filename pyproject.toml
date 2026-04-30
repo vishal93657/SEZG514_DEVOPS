@@ -1,8 +1,8 @@
 [tool.semantic_release]
 version_source = "tag"
 tag_format = "v{version}"
-commit_parser = "conventional"
 changelog_file = "CHANGELOG.md"
+commit_parser = "conventional"
 
 version_variables = [
     "app.py:__version__"
