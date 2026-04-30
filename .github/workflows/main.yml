@@ -31,17 +31,12 @@ jobs:
       run: pytest
     
     - name: SonarCloud Scan
+      uses: sonarsource/sonarcloud-github-action@v2.0
+      with:
+        sonar-project-key: your_project_key
+        sonar-organization: your_organization_key
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      run: |
-        # Download and unzip SonarScanner
-        curl -sSLo sonar-scanner-cli.zip https://github.com/SonarSource/sonar-scanner-cli/releases/download/4.6.2.2472/sonar-scanner-cli-4.6.2.2472-linux.zip
-        unzip sonar-scanner-cli.zip
-        ./sonar-scanner-4.6.2.2472-linux/bin/sonar-scanner \
-          -Dsonar.projectKey=your_project_key \
-          -Dsonar.organization=your_organization_key \
-          -Dsonar.host.url=https://sonarcloud.io \
-          -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
 
   release:
