@@ -2,6 +2,23 @@
 
 <!-- version list -->
 
+## v1.1.0 (2026-04-30)
+
+### Bug Fixes
+
+- Sonar
+  ([`83ad3c3`](https://github.com/vishal93657/SEZG514_DEVOPS/commit/83ad3c3cbfe4c4c2d37239070d6f1f1ba1dd64f3))
+
+- Sonar
+  ([`9647d64`](https://github.com/vishal93657/SEZG514_DEVOPS/commit/9647d649fb12c2855995e56d7f1738c3a6454c24))
+
+- Sonar
+  ([`b946ccb`](https://github.com/vishal93657/SEZG514_DEVOPS/commit/b946ccbf31698c9de26f31ec755ced57cf33d444))
+
+- Sonar
+  ([`c661a06`](https://github.com/vishal93657/SEZG514_DEVOPS/commit/c661a06cf5f477a5c789da78452a15af04c78b1b))
+
+
 ## v1.0.2 (2026-04-30)
 
 

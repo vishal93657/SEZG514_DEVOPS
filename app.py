@@ -1,4 +1,4 @@
-__version__ = "1.0.2"
+__version__ = "1.1.0"
 """
 Flask API for ACEest Fitness & Gym.
 Converted from Tkinter desktop app to REST API with Swagger UI.
