@@ -1,0 +1,58 @@
+pipeline {
+    agent any
+    
+    environment {
+        SONAR_TOKEN = credentials('SONAR_TOKEN') 
+        SONAR_HOST_URL = "https://sonarcloud.io"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                script {
+                    sh 'pip install -r requirements.txt'
+                }
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                script {
+                    sh 'pytest --cov=your_module --cov-report=xml:coverage.xml'
+                }
+            }
+        }
+
+        stage('SonarCloud Analysis') {
+            steps {
+                script {
+                    // Run SonarCloud analysis
+                    withSonarQubeEnv('SonarCloud') {
+                        sh '''
+                            sonar-scanner \
+                            -Dsonar.projectKey=vishal93657_SEZG514_DEVOPS \
+                            -Dsonar.organization=vishal93657  \
+                            -Dsonar.tests=tests \
+                            -Dsonar.python.coverage.reportPaths=coverage.xml
+                        '''
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Build and analysis finished successfully'
+        }
+        failure {
+            echo 'Build failed. Check the logs!'
+        }
+    }
+}
