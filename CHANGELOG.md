@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.1.4 (2026-04-30)
+
+### Bug Fixes
+
+- Build
+  ([`486783a`](https://github.com/vishal93657/SEZG514_DEVOPS/commit/486783af99406d18079e50ddd741974dbe71e7b7))
+
+
 ## v1.1.3 (2026-04-30)
 
 ### Bug Fixes
